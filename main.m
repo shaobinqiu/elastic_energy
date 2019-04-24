@@ -1,61 +1,21 @@
 clear 
-  lat_p= 3.57000000000000*[ 1.0000000000000000    0.0000000000000000    0.0000000000000000
-     0.0000000000000000    1.0000000000000000    0.0000000000000000
-     0.0000000000000000    0.0000000000000000    1.0000000000000000];
- pos=[  0.000000   0.000000   0.000000 
-  0.000000   0.500000   0.500000
-  0.500000   0.000000   0.500000
-  0.500000   0.500000   0.000000 
-  0.250000   0.250000   0.250000
-  0.250000   0.750000   0.750000
-  0.750000   0.250000   0.750000
-  0.750000   0.750000   0.250000];
- ep=zeros(512,9);
- e=num2str(dec2bin(0:511));
- U_all=[];
- for ii=1:size(e,1)
-     for jj=1:9
-         ep(ii,jj)= str2num(e(ii,jj));
-     end
- end
-%  ep=[0.1 0 0 0 0.1 0 0 0 0.1];
+cell=import_poscar('./files/diamond_scell.vasp');    
+M_e=load('./files/moduli_diamond.txt')*10^8;%elastic moduli
+D=3;%dimension
+ ep=generate_ep(D^2);
+ V=abs(det(cell.lattice))*10^(-30);%volumn of cell (m^3)
+  U_all=[];
  for kk=1:size(ep,1)
-    epsilon=[ep(kk,1:3);ep(kk,4:6);ep(kk,7:9)]*0.2-repmat(0.1,3,3);%0101
-     % epsilon=[ep(kk,1:3);ep(kk,4:6);ep(kk,7:9)]*0.1+repmat(0.1,3,3);%0102
-     V=abs(det( lat_p))*10^(-30);%volumn of cell (m^3)
-     Lat= lat_p+epsilon;
-     b=epsilon/ lat_p;
-     d=[b(1,1)
-           b(2,2)
-           b(3,3)
-           b(3,2)+b(2,3)
-           b(1,3)+b(3,1)
-           b(1,2)+b(2,1)];% XX         YY         ZZ    XY    YZ        ZX 
-    M_e=[      10531.4122   1243.9931   1243.9931      0.0000     -0.0000     -0.0000
-                     1243.9931  10531.4122   1243.9931      0.0000      0.0000      0.0000
-         1243.9931   1243.9931  10531.4122      0.0000     -0.0000      0.0000
-            0.0000      0.0000      0.0000   5628.7346      0.0000      0.0000
-           -0.0000      0.0000     -0.0000      0.0000   5628.7346     -0.0000
-           -0.0000      0.0000      0.0000      0.0000     -0.0000   5628.7346]*10^8;%elastic moduli
-     U=0;
-    for ii=1:size(d,1)
-        for jj=1:size(d,1)
-            U=U+0.5*M_e(ii,jj)*d(ii,1)*d(jj,1);
-        end
-    end
-    U=U*V/(1.6*10^(-19));% to eV
+     epsilon=zeros(3,3);
+     for ll=1:D
+         epsilon(ll,1:D)=ep(kk,(ll-1)*D+1:ll*D)*0.1/2;%0101
+     end
+    strain=epsilon/cell.lattice;   
+    U=calculate_U_elastic(M_e,strain,V);
     U_all=[U_all;U];
+    %save ./elastic_E/diamond_005005_elasticE.txt -ascii U_all
 
-% n=['./POSCAR_0101/POSCAR-',num2str(kk)];
-% fid=fopen(n,'w+');
-% fprintf(fid,  'diamond\n');
-% fprintf(fid,'%g\n',1);
-% fprintf(fid,'%-4.6f     %-4.6f     %-4.6f\n',Lat');
-% fprintf(fid,'C\n');
-% fprintf(fid,'%g\n',8);
-% fprintf(fid,'Direct\n');
-% for vv=1:size(pos,1)
-%     fprintf(fid,'%-4.6f     %-4.6f     %-4.6f      \n',pos(vv,:)');
-% end
-% fclose(fid);
+    filename=['./POSCAR/POSCAR-',num2str(kk)];
+    Lat= cell.lattice+epsilon;
+    %write_poscar(filename, 'elatic_test', Lat, cell.symbols, cell.atomcount, cell.coords)
  end

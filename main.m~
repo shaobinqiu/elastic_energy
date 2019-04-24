@@ -1,0 +1,28 @@
+clear 
+cell=import_poscar('./files/diamond_scell.vasp');    
+M_e=load('./files/modulus_diamond.txt')*10^8;%elastic moduli
+D=3;%dimension
+ ep=generate_ep(D^2);
+ V=abs(det(cell.lattice))*10^(-30);%volumn of cell (m^3)
+  U_all=[];
+ for kk=1:size(ep,1)
+     epsilon=zeros(3,3);
+     for ll=1:D
+         epsilon(ll,1:D)=ep(kk,ll*D)*0.1/2;%0101
+     end
+     Lat= cell.lattice+epsilon;
+     b=epsilon/cell.lattice;
+     d=[b(1,1);  b(2,2); b(3,3); b(3,2)+b(2,3); b(1,3)+b(3,1); b(1,2)+b(2,1)];% XX         YY         ZZ    XY    YZ        ZX 
+     U=0;
+    for ii=1:size(d,1)
+        for jj=1:size(d,1)
+            U=U+0.5*M_e(ii,jj)*d(ii,1)*d(jj,1);
+        end
+    end
+    U=U*V/(1.6*10^(-19));% to eV
+    U_all=[U_all;U];
+    %save ./elastic_E/diamond_005005_elasticE.txt -ascii U_all
+
+filename=['./POSCAR/POSCAR-',num2str(kk)];
+%write_poscar(filename, 'elatic_test', Lat, cell.symbols, cell.atomcount, cell.coords)
+ end
